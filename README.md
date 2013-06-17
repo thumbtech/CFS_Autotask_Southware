@@ -12,7 +12,7 @@ Usage Example:
 
 OPTIONAL COMMAND LINE PARAMETERS
 
-**ini** - Path to an ini file  
+**ini** - Path to an ini file*  
     Usage: ini=foo.ini  
     Usage: ini=c:/temp/foo.ini  
     Usage: ini="c:/dir name with spaces/file name with spaces.ini"
@@ -32,7 +32,7 @@ OPTIONAL COMMAND LINE PARAMETERS
 
 **help** - returns this information
 
-Note: if no ini file specified, any ini file in the same directory and having the same base name as this script will be used!
+*Note: if no ini command line parameter supplied, any *.ini file in the same directory and having the same base name as this script will be used!*
 
 Configuration (ini directives)
 ------------------------------
