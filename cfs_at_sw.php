@@ -664,8 +664,10 @@ foreach ($at_files as $at_file) {
 				// loop through the items and do a task, ticket, or "raw" match to the contract id in the billing item ...
 				foreach ($entities_a as $er_a) {
 					$t_bi_key = $data[$contract_invoice_field];
-					$task = (string) $er_a->TaskID;
-					$ticket = (string) $er_a->TicketID;
+					$task = '';
+					if (!empty($er_a->TaskID)) $task = (string) $er_a->TaskID;
+					$ticket = '';
+					if (!empty($er_a->TicketID)) $ticket = (string) $er_a->TicketID;
 					if (!empty ($task)) {
 						$t_bi_key .= get_task_ticket ($task, 'Task');
 					} elseif (!empty ($ticket)) {
@@ -779,6 +781,8 @@ foreach ($at_files as $at_file) {
 		// southware-ize the csv!
 		$file_contents = str_replace (array ("\"_BEGFLD_", "_ENDFLD_\"", "_BEGFLD_", "_ENDFLD_", ",_ENDLIN_"),  array ("\"", "\"", "\"", "\"", "\r"), $file_contents);
 		// spin the dates!
+		$file_contents = preg_replace_callback("|,\"(\d{1,2})/(\d{1,2})/(\d{4})\",|", "sql_date", $file_contents);
+		// twice to handle two dates in a row!
 		$file_contents = preg_replace_callback("|,\"(\d{1,2})/(\d{1,2})/(\d{4})\",|", "sql_date", $file_contents);
 		if (@file_put_contents ($ini['invoices_southware_dir'] . '/' . $at_file, $file_contents) === false) write_out ("ERROR: Unable to create file \"{$ini['invoices_southware_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
 		// file written, now archive this file
@@ -1025,6 +1029,8 @@ if (!empty ($contracts_needed)) {
 		// southware-ize the csv!
 		$file_contents = str_replace (array ("\"_BEGFLD_", "_ENDFLD_\"", "_BEGFLD_", "_ENDFLD_", ",_ENDLIN_"),  array ("\"", "\"", "\"", "\"", "\r"), $file_contents);
 		// spin the dates!
+		$file_contents = preg_replace_callback("|,\"(\d{1,2})/(\d{1,2})/(\d{4})\",|", "sql_date", $file_contents);
+		// twice to handle two dates in a row!
 		$file_contents = preg_replace_callback("|,\"(\d{1,2})/(\d{1,2})/(\d{4})\",|", "sql_date", $file_contents);
 		if (@file_put_contents ($ini['contracts_autotask_dir'] . '/' . $contract_export_file, $file_contents) === false) write_out ("ERROR: Unable to create file \"{$ini['contracts_autotask_dir']}/{$contract_export_file}\"", 1, 1, __FILE__, __LINE__);
 		write_out ("SUCCESS: {$contracts} contracts(s) written to {$ini['contracts_autotask_dir']}/{$contract_export_file}");
