@@ -1,8 +1,8 @@
 <?php
 // cfs_at_sw.php
-// version 1.01beta
+// version 1.2 7/31/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.1 7/15/2013');
+define ('VERSION', '1.2 7/31/2013');
 
 define ('START_TIME', time());
 
