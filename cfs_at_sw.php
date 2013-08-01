@@ -1,8 +1,8 @@
 <?php
 // cfs_at_sw.php
-// version 1.2 7/31/2013
+// version 1.2.1 08/01/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2 7/31/2013');
+define ('VERSION', '1.2.1 08/01/2013');
 
 define ('START_TIME', time());
 
@@ -991,7 +991,7 @@ if (!empty ($contracts_needed)) {
 		if (substr ($at_file, 0, 1) == '.') continue;
 		if (!is_file ($ini['contracts_autotask_dir'] . '/' . $at_file)) continue;
 		if (!$fhi = @fopen ($ini['contracts_autotask_dir'] . '/' . $at_file, 'r')) write_out ("ERROR: Unable to read \"{$ini['contracts_autotask_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
-		while ( ($data = fgetcsv($fhi, 0, "\t") ) !== FALSE ) {
+		while ( ($data = fgetcsv($fhi) ) !== FALSE ) {
 			if (isset ($contracts_needed[$data[0]])) {
 				unset ($contracts_needed[$data[0]]);
 				if (!in_array ($at_file, $queue_files)) $queue_files[] = $at_file;
