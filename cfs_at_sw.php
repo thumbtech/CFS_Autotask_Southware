@@ -1,8 +1,8 @@
 <?php
 // cfs_at_sw.php
-// version 1.2.1 08/01/2013
+// version 1.2.2 08/09/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2.1 08/01/2013');
+define ('VERSION', '1.2.2 08/09/2013');
 
 define ('START_TIME', time());
 
@@ -590,6 +590,7 @@ foreach ($at_files as $at_file) {
 				
 				// match it if I got it!
 				foreach ($entities_a as $er_a) {
+					if (empty ($er_a->AccountNumber)) continue;
 					$v = (string) $er_a->AccountNumber;
 					if (empty ($v)) continue;
 					$accts_matched[$data[$acct_id_fld]] = $v;
@@ -694,8 +695,8 @@ foreach ($at_files as $at_file) {
 				// OK I already know I'm going to need to get this one
 				$incompletes++;
 			} else {
-				// find account and see if it has an AccountNumber
-				write_out ("Querying Autotask for account {$data[$acct_id_fld]} ...");
+				// find contract and see if it has an ContractNumber
+				write_out ("Querying Autotask for contract {$contract_id} ...");
 				$xml = xmlwriter_open_memory();
 				xmlwriter_start_document ($xml);
 				xmlwriter_start_element($xml, 'queryxml');
