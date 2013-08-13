@@ -1,8 +1,8 @@
 <?php
 // cfs_at_sw.php
-// version 1.2.2 08/09/2013
+// version 1.2.3 08/13/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2.2 08/09/2013');
+define ('VERSION', '1.2.3 08/13/2013');
 
 define ('START_TIME', time());
 
@@ -501,6 +501,7 @@ foreach ($at_files as $at_file) {
 	while ( ($data = fgetcsv($fhi) ) !== FALSE ) {
 		$datac = array ();
 		if ($header == 0) {
+			$data = preg_replace('/[^A-Za-z0-9 ]/s', '', $data); // clean out the nasty extras pulled down from AT
 			$header = count ($data);
 			foreach ($data as $k => $v) {
 				if (in_array ($v, $meta_contract_fields)) {
@@ -518,6 +519,8 @@ foreach ($at_files as $at_file) {
 			}
 			if ($acct_id_fld == -1) write_out ("ERROR: Unable to locate {$ini['invoices_account_id_field']} header (set as invoices_account_id_field in \"{$_REQUEST['ini']}\") in \"{$ini['invoices_autotask_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
 			if ($acct_no_fld == -1) write_out ("ERROR: Unable to locate {$ini['invoices_account_number_field']} header (set as invoices_account_number_field in \"{$_REQUEST['ini']}\") in \"{$ini['invoices_autotask_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
+			if ($contract_invoice_field == -1) write_out ("ERROR: Unable to locate INVOICEID header in \"{$ini['invoices_autotask_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
+			if ($contract_ticket_field == -1) write_out ("ERROR: Unable to locate TASK OR TICKET NUMBER header in \"{$ini['invoices_autotask_dir']}/{$at_file}\"", 1, 1, __FILE__, __LINE__);
 			// set up clean csv for southware
 			foreach ($exclude_at_flds as $v) unset ($data[$v]);
 			foreach ($data as $k => $v) $data[$k] = '_BEGFLD_' . $v . '_ENDFLD_';
