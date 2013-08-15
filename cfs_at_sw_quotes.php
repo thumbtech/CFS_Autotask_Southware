@@ -1,8 +1,8 @@
 <?php
-// cfs_at_sw.php
-// version 1.2.1 08/01/2013
+// cfs_at_sw_quotes.php
+// version 0.9.1 08/15/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '0.9.0 08/08/2013');
+define ('VERSION', '0.9.1 08/15/2013');
 
 define ('START_TIME', time());
 
@@ -349,6 +349,7 @@ if (!is_array ($entities_q)) $entities_q = array ($entities_q);
 
 // found quotes get 'em?
 $resource = array(); // for the owner
+$location = array();
 $incompletes = 0;
 foreach ($entities_q as $er_q) {
 
@@ -533,6 +534,12 @@ foreach ($entities_q as $er_q) {
 		break;
 	}
 	
+	// location info
+	$sl = (int) $er_q->ShipToLocationID;
+	if (!isset ($location[$sl])) $location[$sl] = get_location ($sl);
+	$bl = (int) $er_q->BillToLocationID;
+	if (!isset ($location[$bl])) $location[$bl] = get_location ($bl);
+	
 	$header = array (
 		'QuoteID' => (int) $er_q->id,
 		'ExternalQuoteNumber' => '',
@@ -541,9 +548,29 @@ foreach ($entities_q as $er_q) {
 		'OwnerID' => $owner['id'],
 		'OwnerName' => $owner['name'],
 		'OwnerInitials' => $owner['initials'],
+		'PurchaseOrderNumber' => '',
+		'ContactID' => (int) $er_q->ContactID,
+		'CreateDate' => date ('m/d/y', strtotime (substr((string) $er_q->CreateDate, 0, 10))),
+		'Description' => '',
+		'ShipToLocationID' => $sl,
+		'ShipToAddress1' => $location[$sl]['Address1'],
+		'ShipToAddress2' => $location[$sl]['Address2'],
+		'ShipToCity' => $location[$sl]['City'],
+		'ShipToState' => $location[$sl]['State'],
+		'ShipToPostalCode' => $location[$sl]['PostalCode'],
+		'BillToLocationID' => $bl,
+		'BillToAddress1' => $location[$bl]['Address1'],
+		'BillToAddress2' => $location[$bl]['Address2'],
+		'BillToCity' => $location[$bl]['City'],
+		'BillToState' => $location[$bl]['State'],
+		'BillToPostalCode' => $location[$bl]['PostalCode'],
 		);
 		
 	if (!empty ($er_q->ExternalQuoteNumber)) $header['ExternalQuoteNumber'] = (string) $er_q->ExternalQuoteNumber;
+	if (!empty ($er_q->PurchaseOrderNumber)) $header['PurchaseOrderNumber'] = (string) $er_q->PurchaseOrderNumber;
+	if (!empty ($er_q->Description)) $header['Description'] = (string) $er_q->Description;
+	
+	// Get locations
 	
 	// now get the quote lines!
 	$xml = xmlwriter_open_memory();
@@ -594,6 +621,7 @@ foreach ($entities_q as $er_q) {
 			'ItemLineDiscount' => 0,
 			'ItemUnitDiscount' => 0,
 			'ItemPercentageDiscount' => 0,
+			'Type' => (int) $er_i->Type,
 			);
 			
 		if (!empty ($er_i->Name)) $line['ItemName'] = (string) $er_i->Name;	
@@ -947,13 +975,6 @@ function write_out ($message, $error = 0, $fatal = 0, $file = '', $line = '') {
 
 }
 
-function sql_date ($matches) {
-	$date = $matches[3] . '-' . str_pad($matches[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($matches[2], 2, '0', STR_PAD_LEFT);
-	$date = strtotime ($date);
-	if (empty ($date)) return $matches[0];
-	return ',' . date ('m/d/y', $date) . ',';	
-}
-
 function validate_email_addresses ($adds) {
 	global $ini;
 	if (empty ($adds)) return false;
@@ -978,6 +999,62 @@ function validate_email_addresses ($adds) {
 	}
 	return true;
 }
+
+function get_location ($id) {
+	global $soapClient;
+	
+	$return = array (
+		'Address1' => '',
+		'Address2' => '',
+		'City' => '',
+		'State' => '',
+		'PostalCode' => '',
+		);
+		
+	$xml = xmlwriter_open_memory();
+	xmlwriter_start_document ($xml);
+	xmlwriter_start_element($xml, 'queryxml');
+		xmlwriter_start_element($xml, 'entity');
+			xmlwriter_text ($xml, 'QuoteLocation');
+		xmlwriter_end_element($xml);
+		xmlwriter_start_element($xml, 'query');
+			xmlwriter_start_element($xml, 'condition');
+				xmlwriter_start_element($xml, 'field');
+					xmlwriter_text ($xml, 'id');
+					xmlwriter_start_element($xml, 'expression');
+						xmlwriter_write_attribute ($xml, 'op', 'equals');
+						xmlwriter_text ($xml, $id);
+					xmlwriter_end_element($xml);
+				xmlwriter_end_element($xml);
+			xmlwriter_end_element($xml);
+		xmlwriter_end_element($xml);
+	xmlwriter_end_element($xml);
+	xmlwriter_end_document ($xml);
+	$xml = xmlwriter_output_memory ($xml);
+	
+	$params = array ('sXML' => $xml);
+	
+	try {
+		// set_time_limit (30);
+		$soapResponse = $soapClient->query($params);
+		// print_r ($soapResponse); exit;
+	} catch (SoapFault $e) {
+		write_out ("ERROR: SOAP fault on Autotask quote location query: " . $e->faultstring, 1, 1, __FILE__, __LINE__);
+	}
+	
+	$entities = array ();
+	if (isset ($soapResponse->queryResult->EntityResults->Entity)) $entities = $soapResponse->queryResult->EntityResults->Entity;
+	if (!is_array ($entities)) $entities = array ($entities);
+	
+	foreach ($entities as $er) {
+		foreach ($return as $k => $v) {
+			if (!empty ($er->$k)) $return[$k] = (string) $er->$k;
+		}
+		break;
+	}
+	
+	return $return;
+} // end get_location
 
 function help_txt() {
 	return <<<EOD
