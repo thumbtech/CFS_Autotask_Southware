@@ -1,8 +1,8 @@
 <?php
 // cfs_at_sw_quotes.php
-// version 0.9.1 08/15/2013
+// version 0.9.2 09/12/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '0.9.1 08/15/2013');
+define ('VERSION', '0.9.2 09/12/2013');
 
 define ('START_TIME', time());
 
@@ -349,7 +349,8 @@ if (!is_array ($entities_q)) $entities_q = array ($entities_q);
 
 // found quotes get 'em?
 $resource = array(); // for the owner
-$location = array();
+$vendor = array(); // for the product vendor
+$location = array(); // for the addresses
 $incompletes = 0;
 foreach ($entities_q as $er_q) {
 
@@ -530,7 +531,7 @@ foreach ($entities_q as $er_q) {
 		
 		// set owner info
 		$owner['name'] = $resource[$owner['id']]['name'];
-		$owner['inititals'] = $resource[$owner['id']]['initials'];
+		$owner['initials'] = $resource[$owner['id']]['initials'];
 		break;
 	}
 	
@@ -611,27 +612,61 @@ foreach ($entities_q as $er_q) {
 	foreach ($entities_i as $er_i) {
 		// print_r ($er_i); exit;
 		$line = array (
-			'ItemName' => '',
-			'ItemDescription' => '',
+			'Type' => (int) $er_i->Type,
+			'ItemDescription1' => '',
+			'ItemDescription2' => '',
+			'ItemDescription3' => '',
+			'ItemSKU' => '',
 			'ItemManufacturerName' => '',
+			'ItemManufacturerProductName' => '',
+			'ItemVendorID' => '',
+			'ItemVendorName' => '',
 			'ItemVendorProductNumber' => '',
+			'ItemExternalProductID' => '',
 			'ItemQty' => (float) $er_i->Quantity,
 			'ItemUnitCost' => 0,
 			'ItemUnitPrice' => 0,
+			'ItemMSRP' => 0,
 			'ItemLineDiscount' => 0,
 			'ItemUnitDiscount' => 0,
 			'ItemPercentageDiscount' => 0,
-			'Type' => (int) $er_i->Type,
 			);
 			
-		if (!empty ($er_i->Name)) $line['ItemName'] = (string) $er_i->Name;	
-		if (!empty ($er_i->Description)) $line['ItemDescription'] = (string) $er_i->Description;	
+		if (!empty ($er_i->Name)) $line['ItemDescription1'] = (string) $er_i->Name;	
+		if (!empty ($er_i->Description)) $line['ItemDescription2'] = (string) $er_i->Description;	
 		if (!empty ($er_i->UnitCost)) $line['ItemUnitCost'] = (float) $er_i->UnitCost;	
 		if (!empty ($er_i->UnitPrice)) $line['ItemUnitPrice'] = (float) $er_i->UnitPrice;	
 		if (!empty ($er_i->LineDiscount)) $line['ItemLineDiscount'] = (float) $er_i->LineDiscount;	
 		if (!empty ($er_i->UnitDiscount)) $line['ItemUnitDiscount'] = (float) $er_i->UnitDiscount;	
 		if (!empty ($er_i->PercentageDiscount)) $line['ItemPercentageDiscount'] = (float) $er_i->PercentageDiscount;
 		
+		// Some odd clean up to do here ...
+		if ($line['ItemDescription1'] == '') {
+			$line['ItemDescription1'] = $line['ItemDescription2'];
+			$line['ItemDescription2'] = '';
+		}
+		
+		if ($line['ItemDescription1'] != '') {
+			// this seems to be Quosals habit:
+			if (strstr ($line['ItemDescription2'], $line['ItemDescription1']) !== false) {
+				$line['ItemDescription1'] = $line['ItemDescription2'];
+				$line['ItemDescription2'] = '';
+			}
+		}
+		
+		// Southware has three 30-char fields!	
+		if (strlen ($line['ItemDescription1']) > 30) {
+			if ($line['ItemDescription2'] != '') $line['ItemDescription2'] = ' - ' . $line['ItemDescription2'];
+			$line['ItemDescription2'] = substr ($line['ItemDescription1'], 30) . $line['ItemDescription2'];
+			$line['ItemDescription1'] = substr ($line['ItemDescription1'], 0, 30);
+		}
+		
+		if (strlen ($line['ItemDescription2']) > 30) {
+			$line['ItemDescription3'] = substr ($line['ItemDescription2'], 30, 60);
+			$line['ItemDescription2'] = substr ($line['ItemDescription2'], 0, 30);
+		}
+
+			
 		// Product to get?
 		if ((int) $er_i->Type == 1) {
 			// now get the product lines!
@@ -672,11 +707,69 @@ foreach ($entities_q as $er_q) {
 			
 			foreach ($entities_p as $er_p) {
 				// print_r ($er_p); exit;
+				if (!empty ($er_p->SKU)) $line['ItemSKU'] = (string) $er_p->SKU;	
+				if (!empty ($er_p->ExternalProductID)) $line['ItemExternalProductID'] = (string) $er_p->ExternalProductID;	
 				if (!empty ($er_p->ManufacturerName)) $line['ItemManufacturerName'] = (string) $er_p->ManufacturerName;	
+				if (!empty ($er_p->ManufacturerProductName)) $line['ItemManufacturerProductName'] = (string) $er_p->ManufacturerProductName;	
+				if (!empty ($er_p->DefaultVendorID)) $line['ItemVendorID'] = (string) $er_p->DefaultVendorID;	
 				if (!empty ($er_p->VendorProductNumber)) $line['ItemVendorProductNumber'] = (string) $er_p->VendorProductNumber;	
+				if (!empty ($er_p->MSRP)) $line['ItemMSRP'] = (string) $er_p->MSRP;	
 				break;
 			}
 		} // end if product
+		
+		// need the vendor?
+		if (!empty ($line['ItemVendorID'])) {
+			// get the vendor info ... if needed!
+			if (!isset ($vendor[$line['ItemVendorID']])) {
+				$vendor[$line['ItemVendorID']] = array (
+					'name' => '',
+					);
+			
+				$xml = xmlwriter_open_memory();
+				xmlwriter_start_document ($xml);
+				xmlwriter_start_element($xml, 'queryxml');
+					xmlwriter_start_element($xml, 'entity');
+						xmlwriter_text ($xml, 'Account');
+					xmlwriter_end_element($xml);
+					xmlwriter_start_element($xml, 'query');
+						xmlwriter_start_element($xml, 'condition');
+							xmlwriter_start_element($xml, 'field');
+								xmlwriter_text ($xml, 'id');
+								xmlwriter_start_element($xml, 'expression');
+									xmlwriter_write_attribute ($xml, 'op', 'equals');
+									xmlwriter_text ($xml, $line['ItemVendorID']);
+								xmlwriter_end_element($xml);
+							xmlwriter_end_element($xml);
+						xmlwriter_end_element($xml);
+					xmlwriter_end_element($xml);
+				xmlwriter_end_element($xml);
+				xmlwriter_end_document ($xml);
+				$xml = xmlwriter_output_memory ($xml);
+				
+				$params = array ('sXML' => $xml);
+				
+				try {
+					// set_time_limit (30);
+					$soapResponse = $soapClient->query($params);
+					// print_r ($soapResponse); exit;
+				} catch (SoapFault $e) {
+					write_out ("ERROR: SOAP fault on Autotask account (vendor) query: " . $e->faultstring, 1, 1, __FILE__, __LINE__);
+				}
+				
+				$entities_v = array ();
+				if (isset ($soapResponse->queryResult->EntityResults->Entity)) $entities_v = $soapResponse->queryResult->EntityResults->Entity;
+				if (!is_array ($entities_v)) $entities_v = array ($entities_v);
+				
+				foreach ($entities_v as $er_v) {
+					$vendor[$line['ItemVendorID']]['name'] = (string) $er_v->AccountName;
+					break;
+				}
+			}		
+			
+			// can set it now!
+			$line['ItemVendorName'] = $vendor[$line['ItemVendorID']]['name'];
+		}
 		
 		// OK ready to write a line!
 		// need the file? ...
