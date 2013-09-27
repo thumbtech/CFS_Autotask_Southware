@@ -1,8 +1,7 @@
 <?php
 // cfs_at_sw_quotes.php
-// version 0.9.2 09/12/2013
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '0.9.2 09/12/2013');
+define ('VERSION', '0.9.3 09/27/2013');
 
 define ('START_TIME', time());
 
@@ -784,7 +783,7 @@ foreach ($entities_q as $er_q) {
 			$data = array_merge (array_keys ($header), array_keys ($line));
 			foreach ($data as $k => $v) $data[$k] = '_BEGFLD_' . data_clean ($v) . '_ENDFLD_';
 			$data[] = '_ENDLIN_';
-			fputcsv ($fho, $data);
+			// fputcsv ($fho, $data);
 		}
 		
 		$data = array_merge ($header, $line);
