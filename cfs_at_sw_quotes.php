@@ -1,7 +1,11 @@
 <?php
 // cfs_at_sw_quotes.php
 // GreenPages Technology Solutions, Inc.
+<<<<<<< HEAD
 define ('VERSION', '0.9.3 09/27/2013');
+=======
+define ('VERSION', '0.9.4 10/03/2013');
+>>>>>>> 0.9.4 10/03/2013
 
 define ('START_TIME', time());
 
@@ -640,6 +644,8 @@ foreach ($entities_q as $er_q) {
 		if (!empty ($er_i->PercentageDiscount)) $line['ItemPercentageDiscount'] = (float) $er_i->PercentageDiscount;
 		
 		// Some odd clean up to do here ...
+		$line['ItemDescription1'] = data_clean ($line['ItemDescription1']);
+		$line['ItemDescription2'] = data_clean ($line['ItemDescription2']);
 		if ($line['ItemDescription1'] == '') {
 			$line['ItemDescription1'] = $line['ItemDescription2'];
 			$line['ItemDescription2'] = '';
@@ -999,6 +1005,7 @@ write_out ('DONE!', 0, 1);
 function data_clean ($d) {
 	$d = trim ($d);
 	$d = str_replace (array ("\t", "\n", "\r"), array ('', ' ', ''), $d);
+	$d = preg_replace ('/[^(\x20-\x7F)]*/', '', $d);
 	return $d;
 }
 
