@@ -1,6 +1,5 @@
 <?php
 // cfs_at_sw.php
-// version 1.2.3 08/13/2013
 // GreenPages Technology Solutions, Inc.
 define ('VERSION', '1.2.4 01/20/2014');
 
