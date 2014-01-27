@@ -1,7 +1,7 @@
 <?php
 // cfs_at_sw.php
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2.4 01/20/2014');
+define ('VERSION', '1.2.5 01/27/2014');
 
 define ('START_TIME', time());
 
@@ -1101,6 +1101,7 @@ write_out ('DONE!', 0, 1);
 function data_clean ($d) {
 	$d = trim ($d);
 	$d = str_replace (array ("\t", "\n", "\r"), array ('', ' ', ''), $d);
+	$d = preg_replace ('/[^(\x20-\x7F)]*/', '', $d);
 	return $d;
 }
 

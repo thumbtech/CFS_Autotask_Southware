@@ -1,7 +1,7 @@
 <?php
 // cfs_at_sw_quotes.php
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '0.9.4 10/03/2013');
+define ('VERSION', '0.9.5 01/27/2014');
 
 define ('START_TIME', time());
 
@@ -148,6 +148,8 @@ $meta_account = array (
 	array ('Web Address', 'account', 'WebAddress'),
 //	array ('Territory', 'account', 'TerritoryID'),
 //	array ('Key Account Icon', 'account', 'KeyAccountIcon'),
+	array ('Tax Region Number', 'account', 'TaxRegionID'),
+	array ('Tax Region Name', 'taxregion', 'name'),
 	);
 
 // headers arrays of name, context, value for quotes
@@ -849,6 +851,7 @@ if (!empty ($accts_needed)) {
 		// fwrite ($fho, implode ("\t", $headers) . "\n");
 		
 		$resource = array();
+		$taxregion = array();
 		$accounts = 0;
 		foreach ($accts_needed as $acct_id => $acct_data) {
 		
@@ -961,6 +964,55 @@ if (!empty ($accts_needed)) {
 				
 			} // end if resource doesn't exist
 			
+			// tax region ... might have already grabbed it!
+			if(!empty ($acct_data['TaxRegionID']) and !isset($taxregion[$acct_data['TaxRegionID']])) {
+			
+				$taxregion[$acct_data['TaxRegionID']] = array (
+					'name' => '',
+					);
+			
+				$xml = xmlwriter_open_memory();
+				xmlwriter_start_document ($xml);
+				xmlwriter_start_element($xml, 'queryxml');
+					xmlwriter_start_element($xml, 'entity');
+						xmlwriter_text ($xml, 'TaxRegion');
+					xmlwriter_end_element($xml);
+					xmlwriter_start_element($xml, 'query');
+						xmlwriter_start_element($xml, 'condition');
+							xmlwriter_start_element($xml, 'field');
+								xmlwriter_text ($xml, 'id');
+								xmlwriter_start_element($xml, 'expression');
+									xmlwriter_write_attribute ($xml, 'op', 'equals');
+									xmlwriter_text ($xml, $acct_data['TaxRegionID']);
+								xmlwriter_end_element($xml);
+							xmlwriter_end_element($xml);
+						xmlwriter_end_element($xml);
+					xmlwriter_end_element($xml);
+				xmlwriter_end_element($xml);
+				xmlwriter_end_document ($xml);
+				$xml = xmlwriter_output_memory ($xml);
+				
+				$params = array ('sXML' => $xml);
+				
+				try {
+					// set_time_limit (30);
+					$soapResponse = $soapClient->query($params);
+					// print_r ($soapResponse); exit;
+				} catch (SoapFault $e) {
+					write_out ("ERROR: SOAP fault on Autotask resource query: " . $e->faultstring, 1, 1, __FILE__, __LINE__);
+				}
+				
+				$entities_tr = array ();
+				if (isset ($soapResponse->queryResult->EntityResults->Entity)) $entities_tr = $soapResponse->queryResult->EntityResults->Entity;
+				if (!is_array ($entities_tr)) $entities_tr = array ($entities_tr);
+				
+				foreach ($entities_tr as $er_tr) {
+					$taxregion[$acct_data['TaxRegionID']]['name'] = (string) $er_tr->Name;
+					break;
+				}
+				
+			} // end if tax region doesn't exist
+			
 			$data = array ();
 			foreach ($meta_account as $v) {
 				$fld = '';
@@ -973,6 +1025,9 @@ if (!empty ($accts_needed)) {
 						break;
 					case 'owner':
 						$fld = $resource[$acct_data['OwnerResourceID']][$v[2]];
+						break;
+					case 'taxregion':
+						if (!empty ($acct_data['TaxRegionID'])) $fld = $taxregion[$acct_data['TaxRegionID']][$v[2]];
 						break;
 					case 'literal':
 						$fld = $v[2];
