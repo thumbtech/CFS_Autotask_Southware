@@ -1,7 +1,7 @@
 <?php
 // cfs_at_sw_quotes.php
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '0.9.5 01/27/2014');
+define ('VERSION', '0.9.6 03/02/2014');
 
 define ('START_TIME', time());
 
@@ -169,13 +169,16 @@ try {
 	write_out ("ERROR: Failed connecting to Autotask: " . $e->getMessage(), 1, 1, __FILE__, __LINE__); 
 }
 
+// do the required directories exist??
+if (!is_dir ($ini['quotes_autotask_dir'])) write_out ("ERROR: Cannot locate quotes_autotask_dir @ \"{$ini['quotes_autotask_dir']}\"", 1, 1, __FILE__, __LINE__);
+if (!is_dir ($ini['accounts_southware_dir'])) write_out ("ERROR: Cannot locate accounts_southware_dir @ \"{$ini['accounts_southware_dir']}\"", 1, 1, __FILE__, __LINE__);
+if (!is_dir ($ini['accounts_southware_archive_dir'])) write_out ("ERROR: Cannot locate accounts_southware_archive_dir @ \"{$ini['accounts_southware_archive_dir']}\"", 1, 1, __FILE__, __LINE__);
+
 // as we process invoices, we will be keeping track of the accounts we have matched and the ones needed!
 $accts_matched = array ();
 $accts_needed = array ();
 
 // but first we need to update account numbers ... southware -> autotask!
-if (!is_dir ($ini['accounts_southware_dir'])) write_out ("ERROR: Cannot locate accounts_southware_dir @ \"{$ini['accounts_southware_dir']}\"", 1, 1, __FILE__, __LINE__);
-if (!is_dir ($ini['accounts_southware_archive_dir'])) write_out ("ERROR: Cannot locate accounts_southware_archive_dir @ \"{$ini['accounts_southware_archive_dir']}\"", 1, 1, __FILE__, __LINE__);
 write_out ("Checking for updated Southware accounts in {$ini['accounts_southware_dir']}");
 $sw_files = scandir ($ini['accounts_southware_dir']);
 foreach ($sw_files as $sw_file) {
@@ -355,9 +358,32 @@ $location = array(); // for the addresses
 $incompletes = 0;
 foreach ($entities_q as $er_q) {
 
-	write_out ("Exporting Quote #" . (int) $er_q->id . " - " . (string) $er_q->Name);
+	$quote_id = (int) $er_q->id;
+	write_out ("Exporting Quote #{$quote_id} - " . (string) $er_q->Name);
+
+	// check to see if it is already queued!
+	$at_qt_files = scandir ($ini['quotes_autotask_dir']);
+	$queue_files = array ();
+	foreach ($at_qt_files as $at_qt_file) {
+		if (substr ($at_qt_file, 0, 1) == '.') continue;
+		if (!is_file ($ini['quotes_autotask_dir'] . '/' . $at_qt_file)) continue;
+		if (!$fhi = @fopen ($ini['quotes_autotask_dir'] . '/' . $at_qt_file, 'r')) write_out ("ERROR: Unable to read \"{$ini['quotes_autotask_dir']}/{$at_qt_file}\"", 1, 1, __FILE__, __LINE__);
+		while ( ($data = fgetcsv($fhi, 0, "\t") ) !== FALSE ) {
+			if ($data[0] == $quote_id) {
+				if (!in_array ($at_qt_file, $queue_files)) $queue_files[] = $at_qt_file;
+				break;
+			}
+		}
+		fclose ($fhi);
+	}
 	
-	// need to get the Southware account number
+	// were any already queued?
+	if (!empty ($queue_files)) {
+		write_out ("Quote #{$quote_id} queued for import in " . implode ("\nQuote #{$quote_id} queued for import in ", $queue_files));
+		continue;
+	}
+	
+	// need to get the Southware account number ...
 	$account = (int) $er_q->AccountID;
 	if (isset ($accts_matched[$account])) {
 		$account = $accts_matched[$account];
@@ -367,6 +393,7 @@ foreach ($entities_q as $er_q) {
 		$incompletes++;
 		continue;
 	} else {
+				
 		// find account and see if it has an AccountNumber
 		write_out ("Querying Autotask for account {$account} ...");
 		$xml = xmlwriter_open_memory();
@@ -404,7 +431,7 @@ foreach ($entities_q as $er_q) {
 		if (isset ($soapResponse->queryResult->EntityResults->Entity)) $entities_a = $soapResponse->queryResult->EntityResults->Entity;
 		if (!is_array ($entities_a)) $entities_a = array ($entities_a);
 		
-		if (empty ($entities_a)) write_out ("Account ID #{$account} referenced in Quote #" . (int) $er_q->id . " not found in Autotask?!?", 1, 1, __FILE__, __LINE__);
+		if (empty ($entities_a)) write_out ("Account ID #{$account} referenced in Quote #{$quote_id} not found in Autotask?!?", 1, 1, __FILE__, __LINE__);
 		
 		// match it if I got it!
 		foreach ($entities_a as $er_a) {
@@ -543,7 +570,7 @@ foreach ($entities_q as $er_q) {
 	if (!isset ($location[$bl])) $location[$bl] = get_location ($bl);
 	
 	$header = array (
-		'QuoteID' => (int) $er_q->id,
+		'QuoteID' => $quote_id,
 		'ExternalQuoteNumber' => '',
 		'QuoteName' => (string) $er_q->Name,
 		'AccountID' => $account,
@@ -587,7 +614,7 @@ foreach ($entities_q as $er_q) {
 					xmlwriter_text ($xml, 'QuoteID');
 					xmlwriter_start_element($xml, 'expression');
 						xmlwriter_write_attribute ($xml, 'op', 'equals');
-						xmlwriter_text ($xml, (int) $er_q->id);
+						xmlwriter_text ($xml, $quote_id);
 					xmlwriter_end_element($xml);
 				xmlwriter_end_element($xml);
 			xmlwriter_end_element($xml);
@@ -777,8 +804,6 @@ foreach ($entities_q as $er_q) {
 		// OK ready to write a line!
 		// need the file? ...
 		if (empty ($fho)) {
-			if (!is_dir ($ini['quotes_autotask_dir'])) write_out ("ERROR: Cannot locate quotes_autotask_dir @ \"{$ini['quotes_autotask_dir']}\"", 1, 1, __FILE__, __LINE__);
-		
 			// create file in temp initially ...
 			$quote_export_file = 'AT_Quotes_' . date ('YmdHis') . '.csv';
 			if (!$fho = @fopen (sys_get_temp_dir () . '/' . $quote_export_file, 'w')) write_out ("ERROR: Unable to open file \"" . sys_get_temp_dir () . "/{$quote_export_file}\"", 1, 1, __FILE__, __LINE__);
