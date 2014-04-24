@@ -1,7 +1,7 @@
 <?php
 // cfs_at_sw.php
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2.5 01/27/2014');
+define ('VERSION', '1.2.6 04/24/2014');
 
 define ('START_TIME', time());
 
@@ -546,7 +546,7 @@ foreach ($at_files as $at_file) {
 		}
 		
 		// now check for accounts in file!
-		if (empty ($data[$acct_no_fld])) {
+		if (!empty ($data[$contract_invoice_field]) and empty ($data[$acct_no_fld])) {
 			if (isset ($accts_matched[$data[$acct_id_fld]])) {
 				$data[$acct_no_fld] = $accts_matched[$data[$acct_id_fld]];
 			} elseif (isset ($accts_needed[$data[$acct_id_fld]])) {
@@ -620,7 +620,7 @@ foreach ($at_files as $at_file) {
 		} // end if need account
 		
 		// now check for contracts in file!
-		if ($contract_field >=0 and $contract_no_field >=0 and in_array ($data[$contract_field], $ini['contracts_allocation_code']) and empty ($data[$contract_no_field]) and !isset ($accts_needed[$data[$acct_id_fld]])) {
+		if (!empty ($data[$contract_invoice_field]) and $contract_field >=0 and $contract_no_field >=0 and in_array ($data[$contract_field], $ini['contracts_allocation_code']) and empty ($data[$contract_no_field]) and !isset ($accts_needed[$data[$acct_id_fld]])) {
 			// OK ... what is the contract id?
 			// what's the billing item key?:
 			$bi_key = $data[$contract_invoice_field] . $data[$contract_ticket_field];
@@ -766,6 +766,7 @@ foreach ($at_files as $at_file) {
 				}
 			}
 		} // end if need contract
+		
 		// set up clean csv for southware
 		foreach ($exclude_at_flds as $v) unset ($data[$v]);
 		foreach ($data as $k => $v) $data[$k] = '_BEGFLD_' . $v . '_ENDFLD_';
