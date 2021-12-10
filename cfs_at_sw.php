@@ -1,7 +1,7 @@
 <?php
 // cfs_at_sw.php
 // GreenPages Technology Solutions, Inc.
-define ('VERSION', '1.2.6 04/24/2014');
+define ('VERSION', '1.2.7 12/09/2021');
 
 define ('START_TIME', time());
 
@@ -89,6 +89,7 @@ $required_ini_vars = array(
 	'autotask_api_user',
 	'autotask_api_password',
 	'autotask_api_zone',
+	'autotask_tracking_id',
 	'invoices_account_id_field',
 	'invoices_account_number_field',
 	'invoices_autotask_dir',
@@ -109,7 +110,7 @@ if(!empty($missing_ini_vars))
 
 // now we can get to work ...
 // set the autotask wsdl for the zone
-$ini['autotask_api_wsdl'] = "https://webservices{$ini['autotask_api_zone']}.autotask.net/atservices/1.5/atws.wsdl";
+$ini['autotask_api_wsdl'] = "https://webservices{$ini['autotask_api_zone']}.autotask.net/atservices/1.6/atws.wsdl";
 
 // headers arrays of name, context, value
 $meta = array (
@@ -192,6 +193,8 @@ $options = array (
 try {
 	// set_time_limit (30);
 	$soapClient = new SoapClient ($ini['autotask_api_wsdl'], $options);
+	$soapHeader = new SoapHeader('http://autotask.net/ATWS/v1_6/','AutotaskIntegrations', array('IntegrationCode' => $ini['autotask_tracking_id']), false);
+	$soapClient->__setSoapHeaders($soapHeader);
 } catch (Exception $e) {  
 	write_out ("ERROR: Failed connecting to Autotask: " . $e->getMessage(), 1, 1, __FILE__, __LINE__); 
 }
@@ -290,9 +293,9 @@ foreach ($sw_files as $sw_file) {
 				}
 			}
 			
-			$sObj = new SoapVar($aObj, SOAP_ENC_OBJECT, 'Account', 'http://autotask.net/ATWS/v1_5/');
+			$sObj = new SoapVar($aObj, SOAP_ENC_OBJECT, 'Account', 'http://autotask.net/ATWS/v1_6/');
 			$entArray = array($sObj);
-			$ents = new SoapVar($entArray, SOAP_ENC_OBJECT, 'ArrayOfEntity', 'http://autotask.net/ATWS/v1_5/');
+			$ents = new SoapVar($entArray, SOAP_ENC_OBJECT, 'ArrayOfEntity', 'http://autotask.net/ATWS/v1_6/');
 			// print_r ($ents); exit;
 
 			try {
@@ -414,9 +417,9 @@ foreach ($sw_files as $sw_file) {
 				}
 			}
 			
-			$sObj = new SoapVar($aObj, SOAP_ENC_OBJECT, 'Contract', 'http://autotask.net/ATWS/v1_5/');
+			$sObj = new SoapVar($aObj, SOAP_ENC_OBJECT, 'Contract', 'http://autotask.net/ATWS/v1_6/');
 			$entArray = array($sObj);
-			$ents = new SoapVar($entArray, SOAP_ENC_OBJECT, 'ArrayOfEntity', 'http://autotask.net/ATWS/v1_5/');
+			$ents = new SoapVar($entArray, SOAP_ENC_OBJECT, 'ArrayOfEntity', 'http://autotask.net/ATWS/v1_6/');
 			// print_r ($ents); exit;
 
 			try {
